@@ -8,3 +8,8 @@ spring:
 fileintake:
   upload:
     transport: fake
+  outbox:
+    publisher: fake
+    # Large so the @Scheduled poller never fires on its own during a test run; the
+    # OutboxPoller-specific test calls pollAndPublish() directly for determinism.
+    poll-interval-ms: 3600000

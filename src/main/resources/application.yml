@@ -46,3 +46,10 @@ fileintake:
     transport: fake # set to xml-multipart to use real GCS-signed URLs
     credential-ttl-minutes: 15
     bucket: ${GCS_BUCKET:}
+  outbox:
+    publisher: fake # set to pubsub to use real Pub/Sub; only relevant under the worker profile
+    gcp-project-id: ${GCP_PROJECT_ID:}
+    topic: ${PUBSUB_TOPIC:submission-committed}
+    batch-size: 100
+    poll-interval-ms: 5000
+    publish-timeout-ms: 10000
