@@ -43,5 +43,6 @@ fileintake:
   submission:
     ttl-hours: 24
   upload:
-    transport: fake # switched to xml-multipart in Step 5
+    transport: fake # set to xml-multipart to use real GCS-signed URLs
     credential-ttl-minutes: 15
+    bucket: ${GCS_BUCKET:}
