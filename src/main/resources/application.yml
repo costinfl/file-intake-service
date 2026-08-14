@@ -41,7 +41,6 @@ logging:
 
 fileintake:
   submission:
-    expected-file-count: 10
     ttl-hours: 24
   upload:
     transport: fake # switched to xml-multipart in Step 5
