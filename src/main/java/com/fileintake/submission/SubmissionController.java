@@ -1,5 +1,6 @@
 package com.fileintake.submission;
 
+import com.fileintake.submission.dto.CommitResponse;
 import com.fileintake.submission.dto.CompleteFileResponse;
 import com.fileintake.submission.dto.CreateSubmissionRequest;
 import com.fileintake.submission.dto.CreateSubmissionResponse;
@@ -48,5 +49,10 @@ public class SubmissionController {
     @GetMapping("/{submissionId}")
     public SubmissionStatusResponse getSubmission(@PathVariable UUID submissionId) {
         return submissionService.getSubmission(submissionId);
+    }
+
+    @PostMapping("/{submissionId}/commit")
+    public CommitResponse commit(@PathVariable UUID submissionId) {
+        return submissionService.commit(submissionId);
     }
 }

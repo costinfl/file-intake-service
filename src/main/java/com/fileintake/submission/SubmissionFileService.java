@@ -7,6 +7,8 @@ import com.fileintake.submission.dto.CompleteFileResponse;
 import com.fileintake.upload.UploadTransport;
 import com.fileintake.upload.UploadedObject;
 import java.time.Clock;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -35,6 +37,11 @@ public class SubmissionFileService {
         this.readOnlyTx = new TransactionTemplate(transactionManager);
         this.readOnlyTx.setReadOnly(true);
         this.writeTx = new TransactionTemplate(transactionManager);
+    }
+
+    // Truncated to microseconds to match Postgres timestamptz precision - see SubmissionService.now().
+    private Instant now() {
+        return clock.instant().truncatedTo(ChronoUnit.MICROS);
     }
 
     /**
@@ -87,12 +94,12 @@ public class SubmissionFileService {
 
         if (!result.exists()) {
             file.setStatus(SubmissionFileStatus.FAILED);
-            file.setUpdatedAt(clock.instant());
+            file.setUpdatedAt(now());
             return VerificationOutcome.rejected("uploaded object not found for file: " + fileId);
         }
         if (result.sizeBytes() != precheckedFile.getDeclaredSize()) {
             file.setStatus(SubmissionFileStatus.FAILED);
-            file.setUpdatedAt(clock.instant());
+            file.setUpdatedAt(now());
             return VerificationOutcome.rejected(
                     "size mismatch for file "
                             + fileId
@@ -106,7 +113,7 @@ public class SubmissionFileService {
         file.setGcsGeneration(result.generation());
         file.setCrc32c(result.crc32c());
         file.setSizeBytes(result.sizeBytes());
-        file.setUpdatedAt(clock.instant());
+        file.setUpdatedAt(now());
 
         return VerificationOutcome.accepted(
                 new CompleteFileResponse(file.getId(), file.getStatus().name(), file.getSizeBytes(), file.getCrc32c()));
