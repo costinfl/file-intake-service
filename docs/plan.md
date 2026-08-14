@@ -31,3 +31,15 @@ Added in a follow-up request, after the backend was complete — see [specificat
 ## Post-deployment fix
 
 The first `workflow_dispatch` run of `deploy-frontend.yml` failed at the `npm test` step: `actions/setup-node@v4` was pinned to Node 20, but several installed dependencies (`jsdom@30.x`, `undici@8.x`, `@testing-library/jest-dom@7.x`) require Node ≥22, and Vitest's forked test workers crashed with `TypeError: webidl.util.markAsUncloneable is not a function` before any test ran. Fixed by bumping `node-version` to `22` in the workflow — no application or test code changes were needed, since the same suite already ran clean locally on Node 22.
+
+## Local GCP emulation
+
+Added in a follow-up request: without a GKE cluster or GCP account to deploy the backend against, there was no way to exercise the *real* `XmlMultipartTransport`/`PubSubOutboxPublisher` code paths (only the fakes). See [architecture.md](architecture.md#local-gcp-emulation-no-gkegcp-account-needed) for the design.
+
+- `docker-compose.yml` — Postgres, [fake-gcs-server](https://github.com/fsouza/fake-gcs-server), and the official `gcloud beta emulators pubsub` image.
+- `StorageConfig.java` — emulator branch on `fileintake.upload.gcs-host`/`GCS_HOST`: `NoCredentials` + auto-create bucket, plus a throwaway in-memory-generated RSA `ServiceAccountSigner` bean (`localUrlSigner`) for `signUrl()`.
+- `XmlMultipartTransport.java` — takes the signer as `Optional<ServiceAccountSigner>`, passes it to `signUrl()` only when present, and rewrites the signed URL's scheme from `https://` to `http://` in that case (fake-gcs-server is plain HTTP; `signUrl()` always emits `https://`).
+- `PubSubConfig.java` — emulator branch on `fileintake.outbox.pubsub-emulator-host`/`PUBSUB_EMULATOR_HOST`: plaintext gRPC channel + `NoCredentialsProvider`, auto-creates the topic via `TopicAdminClient` if missing.
+- `XmlMultipartTransportTest.java` — new test covering the emulator-signer branch (`SignUrlOption.signWith(...)` passed when present).
+
+Verified manually end to end against the compose stack (not yet covered by an automated integration test): create → real signed-URL PUT → complete (real crc32c/size/generation read back) → commit (outbox row inserted) → `worker`-profile `OutboxPoller` publishes to the Pub/Sub emulator, confirmed by pulling the message back via a raw subscription.

@@ -1,0 +1,45 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: file_intake
+      POSTGRES_USER: file_intake
+      POSTGRES_PASSWORD: file_intake
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U file_intake"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # GCS emulator. -public-host must match the host:port the app (running on the host, not in
+  # this compose network) and a browser can reach — signed URLs embed it verbatim.
+  fake-gcs-server:
+    image: fsouza/fake-gcs-server:latest
+    command:
+      - "-scheme=http"
+      - "-public-host=localhost:4443"
+      - "-cors-headers=x-goog-content-length-range,x-goog-if-generation-match,Content-Type"
+    ports:
+      - "4443:4443"
+
+  # Pub/Sub emulator. No persistence: topics/subscriptions are recreated by the app
+  # (PubSubConfig) and reaper/worker code on every startup.
+  pubsub-emulator:
+    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:emulators
+    command:
+      - "gcloud"
+      - "beta"
+      - "emulators"
+      - "pubsub"
+      - "start"
+      - "--host-port=0.0.0.0:8085"
+      - "--project=local-project"
+    ports:
+      - "8085:8085"
+
+volumes:
+  postgres-data:

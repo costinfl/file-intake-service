@@ -46,6 +46,11 @@ fileintake:
     transport: fake # set to xml-multipart to use real GCS-signed URLs
     credential-ttl-minutes: 15
     bucket: ${GCS_BUCKET:}
+    # Set to point StorageConfig at a local emulator (e.g. http://localhost:4443 for
+    # docker-compose's fake-gcs-server) instead of real GCS via Application Default
+    # Credentials. Leave unset for real GKE/production use.
+    gcs-host: ${GCS_HOST:}
+    gcs-project-id: ${GCS_PROJECT_ID:local-project}
   outbox:
     publisher: fake # set to pubsub to use real Pub/Sub; only relevant under the worker profile
     gcp-project-id: ${GCP_PROJECT_ID:}
@@ -53,6 +58,10 @@ fileintake:
     batch-size: 100
     poll-interval-ms: 5000
     publish-timeout-ms: 10000
+    # Set to point PubSubConfig at a local emulator (e.g. localhost:8085 for
+    # docker-compose's pubsub-emulator) instead of real Pub/Sub. Leave unset for
+    # real GCP/production use.
+    pubsub-emulator-host: ${PUBSUB_EMULATOR_HOST:}
   # fileintake.cors.allowed-origins is intentionally not declared here. Leaving it entirely
   # absent from the Environment (rather than defaulting it to an empty string) is what lets
   # CorsConfig's @ConditionalOnProperty correctly treat "unset" as "CORS off" - an explicit

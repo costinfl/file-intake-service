@@ -59,6 +59,8 @@ No live backend is deployed for this repo's CI, so real mode isn't exercised aut
 2. `npm run dev` here, open the app, open Settings, switch to Real mode, set the API base URL to `http://localhost:8080`, Save.
 3. Walk the flow: create a submission with 10 files, watch them all reach Uploaded, Commit. Since the backend is running with the fake transport, uploads succeed without actually touching GCS.
 
+To exercise real signed-URL uploads (browser PUTs bytes to an actual GCS-shaped endpoint, not just the fake), swap step 1 for the backend's [local GCP emulation](../README.md#running-against-real-gcspub-sub-code-paths-locally-no-gkegcp-account-needed) stack instead — same `FILEINTAKE_CORS_ALLOWED_ORIGINS` env var, plus `GCS_HOST`/`GCS_BUCKET` pointing at the `docker-compose.yml` fake-gcs-server. The bucket CORS caveat above still applies: fake-gcs-server needs its own `-cors-headers` flag (already set in `docker-compose.yml`) for the browser PUT to succeed.
+
 ## Deployment
 
 `.github/workflows/deploy-frontend.yml` builds and deploys this directory to GitHub Pages on push to `main` under `frontend/**`, using the official `actions/deploy-pages` action.

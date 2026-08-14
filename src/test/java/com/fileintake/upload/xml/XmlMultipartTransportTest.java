@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import com.fileintake.upload.InitUpload;
 import com.fileintake.upload.InitUploadRequest;
 import com.fileintake.upload.UploadedObject;
+import com.google.auth.ServiceAccountSigner;
 import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.BlobInfo;
@@ -19,6 +20,7 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
 import java.time.Duration;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 
@@ -27,7 +29,7 @@ class XmlMultipartTransportTest {
     private static final String BUCKET = "test-bucket";
 
     private final Storage storage = mock(Storage.class);
-    private final XmlMultipartTransport transport = new XmlMultipartTransport(storage, BUCKET);
+    private final XmlMultipartTransport transport = new XmlMultipartTransport(storage, BUCKET, Optional.empty());
 
     @Test
     void initReturnsSignedUrlWithRequiredHeaders() throws MalformedURLException {
@@ -50,6 +52,27 @@ class XmlMultipartTransportTest {
         assertThat(result.requiredHeaders()).containsEntry("x-goog-content-length-range", "50000000-50000000");
         assertThat(result.requiredHeaders()).containsEntry("x-goog-if-generation-match", "0");
         assertThat(result.expiresAt()).isNotNull();
+    }
+
+    @Test
+    void initPassesLocalSignerExplicitlyWhenPresent() throws MalformedURLException {
+        URL signedUrl = URI.create("http://localhost:4443/" + BUCKET + "/staging/sub-1/file-1?X-Goog-Signature=abc").toURL();
+        ServiceAccountSigner localSigner = mock(ServiceAccountSigner.class);
+        XmlMultipartTransport emulatorTransport = new XmlMultipartTransport(storage, BUCKET, Optional.of(localSigner));
+        when(storage.signUrl(
+                        any(BlobInfo.class),
+                        anyLong(),
+                        eq(TimeUnit.MINUTES),
+                        any(SignUrlOption.class),
+                        any(SignUrlOption.class),
+                        any(SignUrlOption.class),
+                        any(SignUrlOption.class)))
+                .thenReturn(signedUrl);
+
+        InitUpload result =
+                emulatorTransport.init(new InitUploadRequest("staging/sub-1/file-1", 50_000_000L, Duration.ofMinutes(15)));
+
+        assertThat(result.uploadUrl()).isEqualTo(signedUrl.toString());
     }
 
     @Test

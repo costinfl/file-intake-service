@@ -4,6 +4,7 @@ import com.fileintake.upload.InitUpload;
 import com.fileintake.upload.InitUploadRequest;
 import com.fileintake.upload.UploadTransport;
 import com.fileintake.upload.UploadedObject;
+import com.google.auth.ServiceAccountSigner;
 import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.BlobInfo;
@@ -12,8 +13,11 @@ import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.Storage.SignUrlOption;
 import java.net.URL;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -28,6 +32,9 @@ import org.springframework.stereotype.Component;
  * returning {url, method, headers} unchanged); true chunked multipart (Uppy's {@code
  * aws-s3-multipart} plugin) would need several signed URLs per file and is out of scope for the
  * current {@link UploadTransport} contract.
+ *
+ * <p>{@code localSigner} is only present in local-emulator mode (see {@link StorageConfig}) —
+ * production relies on {@code signUrl()}'s automatic IAM SignBlob fallback instead.
  */
 @Component
 @ConditionalOnProperty(name = "fileintake.upload.transport", havingValue = "xml-multipart")
@@ -38,10 +45,13 @@ public class XmlMultipartTransport implements UploadTransport {
 
     private final Storage storage;
     private final String bucket;
+    private final Optional<ServiceAccountSigner> localSigner;
 
-    public XmlMultipartTransport(Storage storage, @Value("${fileintake.upload.bucket}") String bucket) {
+    public XmlMultipartTransport(
+            Storage storage, @Value("${fileintake.upload.bucket}") String bucket, Optional<ServiceAccountSigner> localSigner) {
         this.storage = storage;
         this.bucket = bucket;
+        this.localSigner = localSigner;
     }
 
     @Override
@@ -53,17 +63,28 @@ public class XmlMultipartTransport implements UploadTransport {
         // A retry can't overwrite a different file that raced onto the same generation.
         requiredHeaders.put(IF_GENERATION_MATCH_HEADER, "0");
 
+        List<SignUrlOption> signUrlOptions = new ArrayList<>();
+        signUrlOptions.add(SignUrlOption.httpMethod(HttpMethod.PUT));
+        signUrlOptions.add(SignUrlOption.withV4Signature());
+        signUrlOptions.add(SignUrlOption.withExtHeaders(requiredHeaders));
+        localSigner.ifPresent(signer -> signUrlOptions.add(SignUrlOption.signWith(signer)));
+
         URL signedUrl =
                 storage.signUrl(
                         blobInfo,
                         request.credentialTtl().toMinutes(),
                         TimeUnit.MINUTES,
-                        SignUrlOption.httpMethod(HttpMethod.PUT),
-                        SignUrlOption.withV4Signature(),
-                        SignUrlOption.withExtHeaders(requiredHeaders));
+                        signUrlOptions.toArray(new SignUrlOption[0]));
+
+        // signUrl() always emits an https:// URL regardless of the client's configured host
+        // scheme. In emulator mode that's wrong (fake-gcs-server serves plain HTTP, and a
+        // self-signed cert would just trade this problem for browser cert-trust prompts in
+        // real-mode frontend testing), so the scheme is corrected only on this branch —
+        // production, where localSigner is empty, is never touched.
+        String uploadUrl = localSigner.isPresent() ? signedUrl.toString().replaceFirst("^https://", "http://") : signedUrl.toString();
 
         Instant expiresAt = Instant.now().plus(request.credentialTtl());
-        return new InitUpload(signedUrl.toString(), requiredHeaders, expiresAt);
+        return new InitUpload(uploadUrl, requiredHeaders, expiresAt);
     }
 
     @Override
