@@ -12,3 +12,9 @@ A Java 21 / Spring Boot 3 service for atomic multi-file submissions: a client su
 ## Frontend
 
 A React + TypeScript demo UI for the flow above lives in [`frontend/`](frontend/README.md), deployable to GitHub Pages. It defaults to a self-contained mock mode (no backend needed) and can be pointed at a real deployed backend — see the frontend README for details, including the CORS setup real mode requires.
+
+## Docs
+
+- [`docs/specification.md`](docs/specification.md) — the original brief this was built from.
+- [`docs/architecture.md`](docs/architecture.md) — how it's built and why.
+- [`docs/plan.md`](docs/plan.md) — what shipped, in what order.
