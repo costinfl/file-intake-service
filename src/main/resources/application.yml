@@ -53,3 +53,10 @@ fileintake:
     batch-size: 100
     poll-interval-ms: 5000
     publish-timeout-ms: 10000
+  # fileintake.cors.allowed-origins is intentionally not declared here. Leaving it entirely
+  # absent from the Environment (rather than defaulting it to an empty string) is what lets
+  # CorsConfig's @ConditionalOnProperty correctly treat "unset" as "CORS off" - an explicit
+  # empty-string default would still count as the property being present, loading the bean
+  # with zero allowed origins instead of skipping it. Set the FILEINTAKE_CORS_ALLOWED_ORIGINS
+  # env var (comma-separated origins) to enable it; Spring Boot's relaxed binding maps it to
+  # this property automatically, no placeholder needed.
