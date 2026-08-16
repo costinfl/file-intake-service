@@ -1,6 +1,6 @@
 # Architecture
 
-How the system is built, and why — as opposed to [specification.md](specification.md) (what was asked for) or [plan.md](plan.md) (what shipped, in what order).
+How the system is built, and why — as opposed to [specification.md](specification.md) (what was asked for) or [plan.md](plan.md) (what shipped, in what order). See [diagrams.md](diagrams.md) for the visual version of this document, including the success/failure/edge-case sequence flows.
 
 ## Backend
 

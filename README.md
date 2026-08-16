@@ -31,3 +31,4 @@ A React + TypeScript demo UI for the flow above lives in [`frontend/`](frontend/
 - [`docs/specification.md`](docs/specification.md) — the original brief this was built from.
 - [`docs/architecture.md`](docs/architecture.md) — how it's built and why.
 - [`docs/plan.md`](docs/plan.md) — what shipped, in what order.
+- [`docs/diagrams.md`](docs/diagrams.md) — architecture diagram plus the success/failure/edge-case flows (retry after a failed upload, commit blocked by unfinished files, concurrent double commit, reaper expiry).
